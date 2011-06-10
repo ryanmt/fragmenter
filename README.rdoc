@@ -1,6 +1,6 @@
 = fragmenter
 
-Description goes here.
+This is an implementation of a protein fragmentation spectra generator I've written.  It could definitely use some polish, but it works in its current form.  It produces *.mgf output and can also graph the peaks at an arbitrary intensity level via Rserve-Simpler.
 
 == Contributing to fragmenter
  
