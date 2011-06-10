@@ -91,6 +91,7 @@ class Fragmenter
 			output_arr << "#{"%.5f" % table_entry.mass }\t#{intensity}"
 		end
 		output_arr << "END IONS"
+		File.open("#{seq}.mgf", 'w') {|o| o.print output_arr.join("\n") }
 		output_arr.join("\n")
 	end
 	def graph(list = nil)
@@ -121,11 +122,11 @@ test2= "AALK"
 
 f = Fragmenter.new
 f.generate_fragment_masses(test2)
-puts f.to_mgf
+f.to_mgf
 
-puts f.to_mgf(test2)
-puts f.to_mgf("VFSNGADLSGVTEEAPLK")
-p f.list
+f.to_mgf(test2)
+f.to_mgf("VFSNGADLSGVTEEAPLK")
+f.list
 
 
 
