@@ -2,7 +2,7 @@ module Ms
 	def precursor_mass(seq, charge)
 		mass = NTerm + CTerm
 		seq.chars.map(&:to_sym).each do |residue|
-			mass += Ms::ResidueMasses[residue]
+			mass += Ms::MonoResidueMasses[residue]
 		end
 		charge_state(mass, charge)
 	end
@@ -34,7 +34,7 @@ module Ms
 
 	CTerm =	27.99491 - 10.9742
 
-	ResidueMasses = {
+	MonoResidueMasses = {
 		:A => 71.037114, 
 		:R => 156.101111,
 		:N => 114.042927,
@@ -55,8 +55,40 @@ module Ms
 		:U => 150.95363,
 		:W => 186.079313,
 		:Y => 163.06332,
-		:V => 99.068414
+		:V => 99.068414,
+    :* => 118.805716,
+    :B => 172.048405,
+    :X => 118.805716,
+    :Z => 128.550585
 	}
+  AvgResidueMasses = {
+    :* => 118.88603, 
+    :A => 71.0779, 
+    :B => 172.1405, 
+    :C => 103.1429, 
+    :D => 115.0874, 
+    :E => 129.11398, 
+    :F => 147.17386, 
+    :G => 57.05132, 
+    :H => 137.13928, 
+    :I => 113.15764, 
+    :K => 128.17228, 
+    :L => 113.15764, 
+    :M => 131.19606, 
+    :N => 114.10264, 
+    :O => 211.28076, 
+    :P => 97.11518, 
+    :Q => 128.12922, 
+    :R => 156.18568, 
+    :S => 87.0773, 
+    :T => 101.10388, 
+    :U => 150.0379, 
+    :V => 99.13106, 
+    :W => 186.2099, 
+    :X => 118.88603, 
+    :Y => 163.17326, 
+    :Z => 128.6231
+  }
 ################
 # This is straight from my pI calculator, and adds the fxn of calculating a maximum charge state for the total peptide, given the sequence.
 #

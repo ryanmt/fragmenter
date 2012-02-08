@@ -4,13 +4,20 @@ class Fragmenter
 
 	attr_accessor :list
 	TableEntry = Struct.new(:ion, :seq, :mass, :charge)
-	Default_fragments = {:b => true, :y => true}
-	def initialize(opts= {})
-		@opts = Default_fragments.merge(opts)
+	Ion_Defaults = {:b => true, :y => true}
+  Defaults = {:charge_states => true, :avg => false}
+	def initialize(opts = {}, ion_opts = {})
+    set_options(opts, ion_opts)
+  end
+  def set_options(opts, ion_opts)
+		#@opts = Default_fragments.merge(opts)
+		opts = Defaults.merge(opts)
+    ion_opts = Ion_Defaults.merge(ion_opts)
 		@n_term_search_ion_types = []
 		@c_term_search_ion_types = []
-		opts = Default_fragments.merge(opts)
-		opts.each do |key, v|
+    @max_charge = 1 unless opts[:charge_states]
+    #puts "options :charge_states = #{opts[:charge_states]}"
+		ion_opts.each do |key, v|
 			if v
 				case key 
 					when :b
@@ -28,7 +35,9 @@ class Fragmenter
 				end
 			end
 		end
-	end #initialize
+    @mass_list = opts[:avg] ? Ms::AvgResidueMasses : Ms::MonoResidueMasses
+    #putsv "@mass_list: #{@mass_list}"
+	end #set_options
 		
 	def calculate_fragments(sequence)
 		arr = sequence.upcase.split('')
@@ -39,22 +48,29 @@ class Fragmenter
 		end
 		out
 	end
+# This fxn exists to provide the API consistent with John's request for the 689R class.
+# Options may include a list of fragment classes as symbols (i.e. :b, :y)
+  def fragment(pep_seq, options={})
+    set_options(options) unless options.empty?
+    generate_fragment_masses(pep_seq)
+    @list.map(&:mass)
+  end
 	def generate_fragment_masses(sequence) # Returns the TableEntry object which should be easy to use for table generation
 		@sequence = sequence
-		@max_charge = charge_at_pH(identify_potential_charges(sequence), 2).round
+		@max_charge ||= charge_at_pH(identify_potential_charges(sequence), 2).ceil
 		### Calculate the base ion masses	
 		n_terms, c_terms = calculate_fragments(sequence)
 		n_terms.map! do |seq|
 			mass = Ms::NTerm
 			seq.chars.map(&:to_sym).each do |residue|
-				mass += Ms::ResidueMasses[residue]
+				mass += @mass_list[residue]
 			end
 			[seq, mass]
 		end
 		c_terms.map! do |seq|
 			mass = Ms::CTerm
 			seq.chars.map(&:to_sym).each do |residue|
-				mass += Ms::ResidueMasses[residue]
+				mass += @mass_list[residue]
 			end
 			[seq, mass]
 		end
@@ -99,34 +115,66 @@ class Fragmenter
 		require 'rserve/simpler'
 		robj = Rserve::Simpler.new
 		hash = {}
-		hash["mass"] = list.map{|a| a.mass}
-		hash["intensity"] = list.map{ 1000}
+		hash["mass"] = list.map(&:mass)
+		hash["intensity"] = list.map{ 1000.0} # Hacky standard intensity value
 		robj.converse( masses: hash.to_dataframe) do 
 			"attach(masses)"
 		end
 		#robj.converse( data: Rserve::DataFrame.from_structs(list))
+    robj.converse "setwd('#{Dir.pwd}')"
+    output_file_name = "#{@sequence}_spectra.png"
 		robj.converse do 
-			%Q{png(file='/home/ryanmt/Dropbox/coding/bootcamp/fragmenter/#{@sequence}_spectra.png')
+			%Q{png(file='#{output_file_name}')
 				plot(masses$mass, masses$intensity, type='h')
 				dev.off()
 		}
 		end	
+    output_file_name
 	end
 		
 end
  
 ######### Testing stuff
+if $0 == __FILE__
+  require 'optparse'
+  options = {charge_states: true, avg: false}
+  ion_options = {}
+  parser = OptionParser.new do |opts|
+    opts.banner = "Usage: #{File.basename(__FILE__)} sequence [options]"
+    opts.separator "Output: [Array] (containing fragment ion masses)"
 
-test = "HELL"
-test2= "AALK"
+    opts.on('--ion_type a,b,c,x,y,z', Array, "Select ion types (default is b,y)") do |t|
+      arr = t.map{|a| a.downcase.to_sym}
+      hash = {}
+      arr.each {|a| hash[a] = true}
+      ion_options[:ion_types] = hash
+    end
+    opts.on('--[no-]charge_states', "Turn on or off the charge state output") do |s|
+      options[:charge_states] = s
+    end
+    opts.on('-a', '--avg', "Use average masses to calculate ions instead of monoisotopic masses") do |a|
+      options[:avg] = a
+    end
+    if ARGV.size == 0
+      puts opts
+      exit
+    end
+    opts.on('--[no-]charge_states', "Turn off output of multiple charge states in list") do |s|
+      options[:charge_states] = s
+    end
+    opts.on() do 
 
-f = Fragmenter.new
-f.generate_fragment_masses(test2)
-f.to_mgf
+    end
 
-f.to_mgf(test2)
-f.to_mgf("VFSNGADLSGVTEEAPLK")
-f.list
-
-
+    opts.on_tail('-h', '--help', "Show this message") do 
+      puts opts
+      exit
+    end
+  end.parse!  # OptionParser
+  if ARGV.size >= 1
+    f = Fragmenter.new(options, ion_options)
+    f.fragment(ARGV.first)
+    puts "I graphed these fragments and wrote them to #{f.graph} for you."
+  end  
+end # $0 == __FILE__
 
