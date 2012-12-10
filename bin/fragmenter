@@ -1,0 +1,46 @@
+#!/usr/bin/env ruby
+
+require_relative '../lib/fragmenter'
+if $0 == __FILE__
+  require 'optparse'
+  options = {charge_states: true, avg: false}
+  ion_options = {}
+  parser = OptionParser.new do |opts|
+    opts.banner = "Usage: #{File.basename(__FILE__)} sequence [options]"
+    opts.separator "Output: [Array] (containing fragment ion masses)"
+
+    opts.on('--ion_type a,b,c,x,y,z', Array, "Select ion types (default is b,y)") do |t|
+      arr = t.map{|a| a.downcase.to_sym}
+      hash = {}
+      arr.each {|a| hash[a] = true}
+      ion_options[:ion_types] = hash
+    end
+    opts.on('--[no-]charge_states', "Turn on or off the charge state output") do |s|
+      options[:charge_states] = s
+    end
+    opts.on('-a', '--avg', "Use average masses to calculate ions instead of monoisotopic masses") do |a|
+      options[:avg] = a
+    end
+    if ARGV.size == 0
+      puts opts
+      exit
+    end
+    opts.on('--[no-]charge_states', "Turn off output of multiple charge states in list") do |s|
+      options[:charge_states] = s
+    end
+    opts.on() do 
+
+    end
+
+    opts.on_tail('-h', '--help', "Show this message") do 
+      puts opts
+      exit
+    end
+  end.parse!  # OptionParser
+  if ARGV.size >= 1
+    f = Fragmenter.new(options, ion_options)
+    f.fragment(ARGV.first)
+    puts "I graphed these fragments and wrote them to #{f.graph} for you."
+  end  
+end # $0 == __FILE__
+
